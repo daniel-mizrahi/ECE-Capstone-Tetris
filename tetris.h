@@ -28,14 +28,16 @@ class Game {
         bool move_left();
         bool move_right();
         void place_piece();
+        void visualize();
+        void spawn_piece();
+        int remove_lines_and_score();
         const char * board[GAME_HEIGHT][GAME_WIDTH];
         int score;
-        void visualize();
         int row;
         int col;
         bool end_game;
         Piece * current_piece;
-        void spawn_piece();
-        int remove_lines_and_score();
+        pthread_mutex_t lock;
+        pthread_cond_t condition;
 };
 #endif

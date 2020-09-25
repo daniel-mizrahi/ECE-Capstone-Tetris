@@ -1,6 +1,12 @@
 # ECE-Capstone-Tetris
 Hardware Tetris for ECE Capstone Design
 
-Complile: clang++ tetris.cpp -g
+Pre-Requisite: 
+
+1. Install Homebrew
+
+2. Run in Terminal 'brew install ncurses'
+
+Complile:  clang++ -std=c++11 tetris.cpp -g -lncurses
 
 Run: ./a.out

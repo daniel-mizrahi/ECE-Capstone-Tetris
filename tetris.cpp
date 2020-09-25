@@ -6,24 +6,20 @@
 #include <ctime>
 #include <time.h>
 #include <unistd.h>
-#include <unordered_set>
 #include "tetris.h"
 #include <chrono>
+#include <pthread.h>
+#include <ncurses.h>
+#include <curses.h>
 using namespace std;
 
-const int NUM_SECONDS = 2;
 extern const int GAME_WIDTH;
 extern const int GAME_HEIGHT;
-const string KEY_UP = "\033[A";
-const string KEY_DOWN = "\033[B";
-const string KEY_LEFT = "\033[D";
-const string KEY_RIGHT = "\033[C";
 
 Piece::Piece(){
     piece_num = rand() % 7;
     state = 0;
     switch (piece_num){
-        cout << "Piece Num:" << piece_num <<endl;
         case 0: { // I
             list<list<int> > state0 = {{0,0}, {0,1}, {0,2}, {0,3}};
             list<list<int> > state1 = {{0,2}, {1,2}, {2,2}, {3,2}};
@@ -99,6 +95,8 @@ Game::Game(){
     srand((unsigned int)time(NULL));
     current_piece = new Piece();
     end_game = false;
+    pthread_mutex_init(&lock, NULL);
+    pthread_cond_init(&condition, NULL);
 }
 
 Game::~Game(){ }
@@ -161,11 +159,12 @@ void Game::visualize(){
     }
     for (int i = 0; i < GAME_HEIGHT; i++){
         for (int j = 0; j < GAME_WIDTH; j++){
-            cout << board[i][j] << " ";
+            printw(board[i][j]);
+            printw(" ");
         }
-        cout << endl;
+        printw("\n");
     }
-    cout << endl;
+    printw("\n");
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         board[(*it).front() + row][(*it).back() + col] = "__";
     }
@@ -184,61 +183,71 @@ void Game::spawn_piece(){
         }
     }
 }
-/*
-string keypress() {
-  system ("/bin/stty raw");
-  string input;
-  system("/bin/stty -echo");
-  getline (cin,input);
-  system("/bin/stty echo");
-  system ("/bin/stty cooked");
-  return input;
+
+
+static void* async_function(void* arg){
+    Game * tetris = (Game *) arg;
+    int ch;
+    while (((ch = getch()) != '\n') && !(tetris->end_game)) {
+        pthread_mutex_lock(&(tetris->lock));
+        switch(ch) {
+            case KEY_UP: 
+                tetris->current_piece->rotate(tetris->board, tetris->row, tetris->col);
+                break;
+            case KEY_DOWN: 
+                //printw("Down\n");
+                break;
+            case KEY_LEFT: 
+                tetris->move_left();
+                break;
+            case KEY_RIGHT: 
+                tetris->move_right();
+                break;
+            default: tetris->end_game = true;
+        }
+        refresh();
+        pthread_mutex_unlock(&(tetris->lock));
+    }
+    return tetris;
 }
-*/
+
+static void* sync_function(void* arg){
+    Game * tetris = (Game *) arg;
+    char * buffer;
+    while(!(tetris->end_game)) {
+        pthread_mutex_lock(&(tetris->lock));
+        tetris->visualize();
+        pthread_mutex_unlock(&(tetris->lock));
+        refresh();
+        usleep(200000);
+        pthread_mutex_lock(&(tetris->lock));
+        if(!(tetris->shift_down())){
+            tetris->visualize();
+            tetris->place_piece();
+        }
+        pthread_mutex_unlock(&(tetris->lock));
+        refresh();
+        clear();
+    }
+    return tetris;
+}
 
 int main(){
     Game * tetris = new Game();
     tetris->spawn_piece();
-    while(!tetris->end_game){
-        /*
-        string input = keypress();
-        cout << input << endl;
-        if (input == KEY_UP){
-            cout << "UP" << endl;
-            //tetris->current_piece->rotate(tetris->board, tetris->row, tetris->col);
-            //tetris->visualize();
-        }
-        else if (input == KEY_DOWN){
-            cout << "DOWN" << endl;
-        }
-        else if (input == KEY_LEFT){
-            cout << "LEFT" << endl;
-            //tetris->move_left();
-            //tetris->visualize();
-        }
-        else if (input == KEY_RIGHT){
-            cout << "RIGHT" << endl;
-            //tetris->move_right();
-            //tetris->visualize();
-        }
-        else{
-            exit(1);
-        }
-        if (time == 10){
-            if(!(tetris->shift_down())){
-                tetris->visualize();
-                tetris->place_piece();
-                time = 0;
-            }
-        }
-        time++;
-        */
-        tetris->visualize();
-        usleep(50000);
-        if(!(tetris->shift_down())){
-            tetris->place_piece();
-        }
-    }
+    pthread_t async;
+    pthread_t sync;
+    initscr();
+    raw();
+    keypad(stdscr, TRUE);
+    noecho();
+    pthread_create(&async, NULL, async_function, (void *) tetris);
+    pthread_create(&sync, NULL, sync_function, (void *) tetris);  
+    pthread_join(async, NULL);
+    pthread_join(sync, NULL);
+    refresh();
+    getch();
+    endwin();
     delete tetris;
     return 0;
 }
