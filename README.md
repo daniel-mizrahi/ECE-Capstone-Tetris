@@ -12,7 +12,11 @@ Complile:  clang++ -std=c++11 tetris.cpp -g -w -lncurses
 Run: ./a.out
 
 Game Commands:
+
 	Rotate: Up-Arrow
+
 	Move Left: Left-Arrow
+
 	Move Right: Right-Arrow
+
 	Place Piece: Down-Arrow
