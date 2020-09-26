@@ -145,7 +145,7 @@ bool Game::move_left(){
 bool Game::move_right(){
     list<list<int> > coords = current_piece->states[current_piece->state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
-        if (board[(*it).front() + row][(*it).back() + col + 1] == "[]" || (*it).back() + col >= (GAME_HEIGHT - 1)){
+        if (board[(*it).front() + row][(*it).back() + col + 1] == "[]" || (*it).back() + col >= (GAME_WIDTH - 1)){
             return false;
         }
     }
