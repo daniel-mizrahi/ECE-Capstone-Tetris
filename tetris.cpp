@@ -159,6 +159,7 @@ void Game::place_piece(){
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         board[(*it).front() + row][(*it).back() + col] = "[]";
     }
+    remove_lines_and_score();
     spawn_piece();
 }
 
@@ -178,6 +179,7 @@ void Game::visualize(){
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         board[(*it).front() + row][(*it).back() + col] = "__";
     }
+    printw("Score %d", score);
 }
 
 void Game::spawn_piece(){
@@ -193,24 +195,36 @@ void Game::spawn_piece(){
         }
     }
 }
-/*
-bool check(const char * array)
-{   
-    for (int i = 0; i < GAME_WIDTH - 1; i++)      
-    {         
-        if (array[i] != array[i + 1])
-            return true;
+
+void Game::shift_rows_down(int row_index){
+    for (int r = row_index; r > 0; r--){
+        for (int c = 0; c < GAME_WIDTH; c++){
+            board[r][c] = board[r-1][c];
+        }
     }
-    return false;
+    for (int c = 0; c < GAME_WIDTH; c++){
+        board[0][c] = "__";
+    }
 }
 
 int Game::remove_lines_and_score(){
+    int lines = 0;
     for (int r = GAME_HEIGHT-1; r >= 0; r--){
-        
+        bool remove = true;
+        for (int c = 0; c < GAME_WIDTH; c++){
+            if (board[r][c] == "__"){
+                remove = false;
+                break;
+            }
+        }
+        if (remove){
+            shift_rows_down(r);
+            lines++;
+        }
     }
+    score += lines * lines;
+    return lines;
 }
-*/
-
 
 static void* async_function(void* arg){
     Game * tetris = (Game *) arg;

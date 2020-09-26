@@ -35,6 +35,7 @@ class Game {
         void visualize();
         void spawn_piece();
         int remove_lines_and_score();
+        void shift_rows_down(int row_index);
         const char * board[GAME_HEIGHT][GAME_WIDTH];
         int score;
         int row;
