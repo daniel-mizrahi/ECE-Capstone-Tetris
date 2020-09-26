@@ -6,6 +6,9 @@
 #include <vector>
 using namespace std;
 
+class Piece;
+class Game;
+
 static const int GAME_WIDTH = 10;
 static const int GAME_HEIGHT = 20;
 
@@ -15,7 +18,8 @@ class Piece{
         ~Piece();
         int piece_num;
         int state;
-        bool rotate(const char * board[GAME_HEIGHT][GAME_WIDTH], int row, int col);
+        bool rotate(Game * tetris);
+        bool in_bounds(Game * tetris, int new_state);
         void visualize();
         vector<list<list<int> > > states;
 };

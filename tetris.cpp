@@ -33,21 +33,21 @@ Piece::Piece(){
         }
         case 2: { // T
             list<list<int> > state0 = {{0,0}, {0,1}, {0,2}, {1,1}};
-            list<list<int> > state1 = {{0,1}, {1,1}, {1,2}, {2,2}};
+            list<list<int> > state1 = {{0,1}, {1,0}, {1,1}, {2,1}};
             list<list<int> > state2 = {{1,1}, {2,0}, {2,1}, {2,2}};
-            list<list<int> > state3 = {{0,1}, {1,1}, {2,1}, {2,2}};
+            list<list<int> > state3 = {{0,1}, {1,1}, {2,1}, {1,2}};
             states = {state0, state1, state2, state3};
             break;
         }
         case 3: { // S
             list<list<int> > state0 = {{0,1}, {0,2}, {1,0}, {1,1}};
-            list<list<int> > state1 = {{0,0}, {1,0}, {1,1}, {2,1}};
+            list<list<int> > state1 = {{0,1}, {1,1}, {1,2}, {2,2}};
             states = {state0, state1};
             break;
         }
         case 4: { // Z
             list<list<int> > state0 = {{0,0}, {0,1}, {1,1}, {1,2}};
-            list<list<int> > state1 = {{0,2}, {1,1}, {1,2}, {2,2}};
+            list<list<int> > state1 = {{0,1}, {1,1}, {1,0}, {2,0}};
             states = {state0, state1};
             break;
         }
@@ -61,7 +61,7 @@ Piece::Piece(){
         }
         case 6: { // J
             list<list<int> > state0 = {{0,0}, {0,1}, {0,2}, {1,2}};
-            list<list<int> > state1 = {{0,1}, {1,1}, {2,1}, {2,2}};
+            list<list<int> > state1 = {{0,1}, {1,1}, {2,1}, {2,0}};
             list<list<int> > state2 = {{1,0}, {2,0}, {2,1}, {2,2}};
             list<list<int> > state3 = {{0,1}, {0,2}, {1,1}, {2,1}};
             states  = {state0, state1, state2, state3};
@@ -70,18 +70,6 @@ Piece::Piece(){
 }
 
 Piece::~Piece(){ }
-
-bool Piece::rotate(const char * board[GAME_HEIGHT][GAME_WIDTH], int row, int col){
-    int new_state = (state + 1) % states.size();
-    list<list<int> > coords = states[new_state];
-    for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
-         if (board[(*it).front() + row][(*it).back()+ col] == "[]"){
-            return false;
-        }
-    }
-    state = new_state;
-    return true;
-}
 
 Game::Game(){
     for (int r = 0; r < GAME_HEIGHT; r++){
@@ -101,13 +89,41 @@ Game::Game(){
 
 Game::~Game(){ }
 
+bool Piece::rotate(Game * tetris){
+    int new_state = (state + 1) % states.size();
+    if (!in_bounds(tetris, new_state)){ return false;}
+    list<list<int> > coords = states[new_state];
+    for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
+        if (tetris->board[(*it).front() + tetris->row][(*it).back() + tetris->col] == "[]"){
+            return false;
+        }
+    }
+    state = new_state;
+    return true;
+}
+
+bool Piece::in_bounds(Game * tetris, int new_state){
+    list<list<int> > coords = states[new_state];
+    for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
+        if ((*it).front() + tetris->row > GAME_HEIGHT - 1){
+            return false;
+        }
+        else if (((*it).back() + tetris->col > GAME_WIDTH - 1) || ((*it).back() + tetris->col < 0)){
+            return false;
+        }
+    }
+    return true;
+}
+
 bool Game::shift_down(){
     list<list<int> > coords = current_piece->states[current_piece->state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         if (board[(*it).front() + row + 1][(*it).back() + col] == "[]"){
+            place_piece();
             return false;
         }
         if ((*it).front() + row == GAME_HEIGHT - 1){
+            place_piece();
             return false;
         }
     }
@@ -118,10 +134,7 @@ bool Game::shift_down(){
 bool Game::move_left(){
     list<list<int> > coords = current_piece->states[current_piece->state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
-        if (board[(*it).front() + row][(*it).back() + col - 1] == "[]"){
-            return false;
-        }
-        if ((*it).back() + col == 0){
+        if (board[(*it).front() + row][(*it).back() + col - 1] == "[]" || (*it).back() + col <= 0){
             return false;
         }
     }
@@ -132,10 +145,7 @@ bool Game::move_left(){
 bool Game::move_right(){
     list<list<int> > coords = current_piece->states[current_piece->state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
-        if (board[(*it).front() + row][(*it).back() + col + 1] == "[]"){
-            return false;
-        }
-        if ((*it).back() + col == GAME_HEIGHT - 1){
+        if (board[(*it).front() + row][(*it).back() + col + 1] == "[]" || (*it).back() + col >= (GAME_HEIGHT - 1)){
             return false;
         }
     }
@@ -183,6 +193,23 @@ void Game::spawn_piece(){
         }
     }
 }
+/*
+bool check(const char * array)
+{   
+    for (int i = 0; i < GAME_WIDTH - 1; i++)      
+    {         
+        if (array[i] != array[i + 1])
+            return true;
+    }
+    return false;
+}
+
+int Game::remove_lines_and_score(){
+    for (int r = GAME_HEIGHT-1; r >= 0; r--){
+        
+    }
+}
+*/
 
 
 static void* async_function(void* arg){
@@ -192,10 +219,12 @@ static void* async_function(void* arg){
         pthread_mutex_lock(&(tetris->lock));
         switch(ch) {
             case KEY_UP: 
-                tetris->current_piece->rotate(tetris->board, tetris->row, tetris->col);
+                tetris->current_piece->rotate(tetris);
                 break;
             case KEY_DOWN: 
-                //printw("Down\n");
+                while(tetris->shift_down()){
+                    continue;
+                }
                 break;
             case KEY_LEFT: 
                 tetris->move_left();
@@ -205,6 +234,8 @@ static void* async_function(void* arg){
                 break;
             default: tetris->end_game = true;
         }
+        clear();
+        tetris->visualize();
         refresh();
         pthread_mutex_unlock(&(tetris->lock));
     }
@@ -213,21 +244,19 @@ static void* async_function(void* arg){
 
 static void* sync_function(void* arg){
     Game * tetris = (Game *) arg;
-    char * buffer;
     while(!(tetris->end_game)) {
         pthread_mutex_lock(&(tetris->lock));
-        tetris->visualize();
-        pthread_mutex_unlock(&(tetris->lock));
-        refresh();
-        usleep(200000);
-        pthread_mutex_lock(&(tetris->lock));
-        if(!(tetris->shift_down())){
-            tetris->visualize();
-            tetris->place_piece();
-        }
-        pthread_mutex_unlock(&(tetris->lock));
-        refresh();
         clear();
+        tetris->visualize();
+        refresh();
+        pthread_mutex_unlock(&(tetris->lock));
+        usleep(500000);
+        pthread_mutex_lock(&(tetris->lock));
+        tetris->shift_down();
+        clear();
+        tetris->visualize();
+        refresh();
+        pthread_mutex_unlock(&(tetris->lock));
     }
     return tetris;
 }
