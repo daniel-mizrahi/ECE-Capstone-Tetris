@@ -41,7 +41,7 @@ class Game {
         int row;
         int col;
         bool end_game;
-        Piece * current_piece;
+        list<Piece * > piece_queue;
         pthread_mutex_t lock;
         pthread_cond_t condition;
 };

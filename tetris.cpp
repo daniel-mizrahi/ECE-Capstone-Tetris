@@ -11,10 +11,13 @@
 #include <pthread.h>
 #include <ncurses.h>
 #include <curses.h>
+#include <unordered_map>
 using namespace std;
 
 extern const int GAME_WIDTH;
 extern const int GAME_HEIGHT;
+
+std::unordered_map<int, std::string> id_to_piece_string ({{ 0, "I"},{ 1, "O"},{ 2, "T"},{ 3, "S"},{ 4, "Z"},{ 5, "L"},{ 6, "J"}});
 
 Piece::Piece(){
     piece_num = rand() % 7;
@@ -81,7 +84,9 @@ Game::Game(){
     row = 0;
     col = 3;
     srand((unsigned int)time(NULL));
-    current_piece = new Piece();
+    for (int i = 0; i < 6; i ++){
+        piece_queue.push_back(new Piece());
+    }
     end_game = false;
     pthread_mutex_init(&lock, NULL);
     pthread_cond_init(&condition, NULL);
@@ -116,7 +121,7 @@ bool Piece::in_bounds(Game * tetris, int new_state){
 }
 
 bool Game::shift_down(){
-    list<list<int> > coords = current_piece->states[current_piece->state];
+    list<list<int> > coords = piece_queue.front()->states[piece_queue.front()->state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         if (board[(*it).front() + row + 1][(*it).back() + col] == "[]"){
             place_piece();
@@ -132,7 +137,7 @@ bool Game::shift_down(){
 }
 
 bool Game::move_left(){
-    list<list<int> > coords = current_piece->states[current_piece->state];
+    list<list<int> > coords = piece_queue.front()->states[piece_queue.front()->state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         if (board[(*it).front() + row][(*it).back() + col - 1] == "[]" || (*it).back() + col <= 0){
             return false;
@@ -140,10 +145,10 @@ bool Game::move_left(){
     }
     col -= 1;
     return true;
-
 }
+
 bool Game::move_right(){
-    list<list<int> > coords = current_piece->states[current_piece->state];
+    list<list<int> > coords = piece_queue.front()->states[piece_queue.front()->state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         if (board[(*it).front() + row][(*it).back() + col + 1] == "[]" || (*it).back() + col >= (GAME_WIDTH - 1)){
             return false;
@@ -155,7 +160,7 @@ bool Game::move_right(){
 }
 
 void Game::place_piece(){
-    list<list<int> > coords = current_piece->states[current_piece->state];
+    list<list<int> > coords = piece_queue.front()->states[piece_queue.front()->state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         board[(*it).front() + row][(*it).back() + col] = "[]";
     }
@@ -164,7 +169,7 @@ void Game::place_piece(){
 }
 
 void Game::visualize(){
-    list<list<int> > coords = current_piece->states[current_piece->state];
+    list<list<int> > coords = piece_queue.front()->states[piece_queue.front()->state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         board[(*it).front() + row][(*it).back() + col] = "[]";
     }
@@ -179,15 +184,25 @@ void Game::visualize(){
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         board[(*it).front() + row][(*it).back() + col] = "__";
     }
-    printw("Score %d", score);
+    printw("Score: %d\n", score);
+    printw("Next Pieces: ");
+    for (list<Piece * > ::iterator it = piece_queue.begin(); it != piece_queue.end(); it++){
+        if (!(it == piece_queue.begin())){
+            int num = ((*it)->piece_num);
+            printw(id_to_piece_string[num].c_str());
+            printw(" ");
+        }
+    }
+    printw("\n");
 }
 
 void Game::spawn_piece(){
     row = 0;
     col = 3;
-    delete current_piece;
-    current_piece = new Piece();
-    list<list<int> > coords = current_piece->states[current_piece->state];
+    delete piece_queue.front();
+    piece_queue.pop_front();
+    piece_queue.push_back(new Piece());
+    list<list<int> > coords = piece_queue.front()->states[piece_queue.front()->state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         if (board[(*it).front() + row][(*it).back() + col] == "[]"){
             end_game = true;
@@ -233,7 +248,7 @@ static void* async_function(void* arg){
         pthread_mutex_lock(&(tetris->lock));
         switch(ch) {
             case KEY_UP: 
-                tetris->current_piece->rotate(tetris);
+                tetris->piece_queue.front()->rotate(tetris);
                 break;
             case KEY_DOWN: 
                 while(tetris->shift_down()){
