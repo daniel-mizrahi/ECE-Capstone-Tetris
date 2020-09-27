@@ -19,4 +19,4 @@ Game Commands:
 
 	Move Right: Right-Arrow
 
-	Place Piece: Down-Arrow
+	Place Piece: Space Bar

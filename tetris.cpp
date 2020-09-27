@@ -250,7 +250,7 @@ static void* async_function(void* arg){
             case KEY_UP: 
                 tetris->piece_queue.front()->rotate(tetris);
                 break;
-            case KEY_DOWN: 
+            case ' ': // Space Bar
                 while(tetris->shift_down()){
                     continue;
                 }
