@@ -12,6 +12,7 @@
 #include <ncurses.h>
 #include <curses.h>
 #include <unordered_map>
+#include <math.h>
 using namespace std;
 
 extern const int GAME_WIDTH;
@@ -85,9 +86,10 @@ Game::Game(){
     col = 3;
     srand((unsigned int)time(NULL));
     for (int i = 0; i < 6; i ++){
-        piece_queue.push_back(new Piece());
+        piece_queue.push_back(Piece());
     }
     end_game = false;
+    lines_cleared = 0;
     pthread_mutex_init(&lock, NULL);
     pthread_cond_init(&condition, NULL);
 }
@@ -121,7 +123,7 @@ bool Piece::in_bounds(Game * tetris, int new_state){
 }
 
 bool Game::shift_down(){
-    list<list<int> > coords = piece_queue.front()->states[piece_queue.front()->state];
+    list<list<int> > coords = piece_queue.front().states[piece_queue.front().state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         if (board[(*it).front() + row + 1][(*it).back() + col] == "[]"){
             place_piece();
@@ -137,7 +139,7 @@ bool Game::shift_down(){
 }
 
 bool Game::move_left(){
-    list<list<int> > coords = piece_queue.front()->states[piece_queue.front()->state];
+    list<list<int> > coords = piece_queue.front().states[piece_queue.front().state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         if (board[(*it).front() + row][(*it).back() + col - 1] == "[]" || (*it).back() + col <= 0){
             return false;
@@ -148,7 +150,7 @@ bool Game::move_left(){
 }
 
 bool Game::move_right(){
-    list<list<int> > coords = piece_queue.front()->states[piece_queue.front()->state];
+    list<list<int> > coords = piece_queue.front().states[piece_queue.front().state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         if (board[(*it).front() + row][(*it).back() + col + 1] == "[]" || (*it).back() + col >= (GAME_WIDTH - 1)){
             return false;
@@ -156,20 +158,20 @@ bool Game::move_right(){
     }
     col += 1;
     return true;
-
 }
 
 void Game::place_piece(){
-    list<list<int> > coords = piece_queue.front()->states[piece_queue.front()->state];
+    list<list<int> > coords = piece_queue.front().states[piece_queue.front().state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         board[(*it).front() + row][(*it).back() + col] = "[]";
     }
     remove_lines_and_score();
     spawn_piece();
+    return;
 }
 
 void Game::visualize(){
-    list<list<int> > coords = piece_queue.front()->states[piece_queue.front()->state];
+    list<list<int> > coords = piece_queue.front().states[piece_queue.front().state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         board[(*it).front() + row][(*it).back() + col] = "[]";
     }
@@ -186,29 +188,30 @@ void Game::visualize(){
     }
     printw("Score: %d\n", score);
     printw("Next Pieces: ");
-    for (list<Piece * > ::iterator it = piece_queue.begin(); it != piece_queue.end(); it++){
+    for (list<Piece> ::iterator it = piece_queue.begin(); it != piece_queue.end(); it++){
         if (!(it == piece_queue.begin())){
-            int num = ((*it)->piece_num);
+            int num = ((*it).piece_num);
             printw(id_to_piece_string[num].c_str());
             printw(" ");
         }
     }
     printw("\n");
+    return;
 }
 
 void Game::spawn_piece(){
     row = 0;
     col = 3;
-    delete piece_queue.front();
     piece_queue.pop_front();
-    piece_queue.push_back(new Piece());
-    list<list<int> > coords = piece_queue.front()->states[piece_queue.front()->state];
+    piece_queue.push_back(Piece());
+    list<list<int> > coords = piece_queue.front().states[piece_queue.front().state];
     for (list<list<int> > ::iterator it = coords.begin(); it != coords.end(); it++){
         if (board[(*it).front() + row][(*it).back() + col] == "[]"){
             end_game = true;
             return;
         }
     }
+    return;
 }
 
 void Game::shift_rows_down(int row_index){
@@ -220,6 +223,7 @@ void Game::shift_rows_down(int row_index){
     for (int c = 0; c < GAME_WIDTH; c++){
         board[0][c] = "__";
     }
+    return;
 }
 
 int Game::remove_lines_and_score(){
@@ -248,7 +252,7 @@ static void* async_function(void* arg){
         pthread_mutex_lock(&(tetris->lock));
         switch(ch) {
             case KEY_UP: 
-                tetris->piece_queue.front()->rotate(tetris);
+                tetris->piece_queue.front().rotate(tetris);
                 break;
             case ' ': // Space Bar
                 while(tetris->shift_down()){
@@ -261,7 +265,7 @@ static void* async_function(void* arg){
             case KEY_RIGHT: 
                 tetris->move_right();
                 break;
-            default: tetris->end_game = true;
+            //default: tetris->end_game = true;
         }
         clear();
         tetris->visualize();
@@ -279,7 +283,7 @@ static void* sync_function(void* arg){
         tetris->visualize();
         refresh();
         pthread_mutex_unlock(&(tetris->lock));
-        usleep(500000);
+        usleep(500000 * pow(0.95, int(tetris->lines_cleared/5)));
         pthread_mutex_lock(&(tetris->lock));
         tetris->shift_down();
         clear();
@@ -291,21 +295,20 @@ static void* sync_function(void* arg){
 }
 
 int main(){
-    Game * tetris = new Game();
-    tetris->spawn_piece();
+    Game tetris = Game();
+    tetris.spawn_piece();
     pthread_t async;
     pthread_t sync;
     initscr();
     raw();
     keypad(stdscr, TRUE);
     noecho();
-    pthread_create(&async, NULL, async_function, (void *) tetris);
-    pthread_create(&sync, NULL, sync_function, (void *) tetris);  
+    pthread_create(&async, NULL, async_function, (void *) &tetris);
+    pthread_create(&sync, NULL, sync_function, (void *) &tetris);  
     pthread_join(async, NULL);
     pthread_join(sync, NULL);
     refresh();
     getch();
     endwin();
-    delete tetris;
     return 0;
 }
