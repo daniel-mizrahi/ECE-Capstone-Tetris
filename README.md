@@ -7,7 +7,7 @@ Pre-Requisite:
 
 2. Run in Terminal 'brew install ncurses'
 
-Complile:  clang++ -std=c++11 tetris.cpp -g -w -lncurses
+Complile:  make
 
 Run: ./a.out
 
