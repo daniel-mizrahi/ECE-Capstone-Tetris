@@ -228,7 +228,7 @@ void Game::shift_rows_down(int row_index){
 
 int Game::remove_lines_and_score(){
     int lines = 0;
-    for (int r = GAME_HEIGHT-1; r >= 0; r--){
+    for (int r = 0; r < GAME_HEIGHT; r++){
         bool remove = true;
         for (int c = 0; c < GAME_WIDTH; c++){
             if (board[r][c] == "__"){
@@ -239,6 +239,7 @@ int Game::remove_lines_and_score(){
         if (remove){
             shift_rows_down(r);
             lines++;
+            r--;
         }
     }
     score += lines * lines;
